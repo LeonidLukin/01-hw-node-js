@@ -1,22 +1,45 @@
-const http = require('http');
-const fs = require('fs').promises;
+const contacts = require("./contacts.js");
+const { Command } = require("commander");
+const program = new Command();
 
+program
+  .option("-a, --action <type>", "choose action")
+  .option("-i, --id <type>", "user id")
+  .option("-n, --name <type>", "user name")
+  .option("-e, --email <type>", "user email")
+  .option("-p, --phone <type>", "user phone");
 
-const PORT = 7777;
+program.parse(process.argv);
 
-// request - запрос пользователя. response - ответ пользователю
-const requestHandler = async (request, response) => {
-    const manifest = await fs.readFile('./package.json', 'utf8');
+const argv = program.opts();
+
+const invokeAction = async ({ action, id, name, email, phone }) => {
+  switch (action) {
+    case "list":
+      const contactsAll = await contacts.listContacts();
+      console.table(contactsAll);
+      break;
+
+    case "get":
+      const contactById = await contacts.getContactById(id);
+      console.log(contactById);
+      break;
+
     
-    response.writeHead(200, { 'Content-type': 'text/json'});
-    response.end(manifest);
-}
+    case "add":
+      await contacts.addContact(name, email, phone);
+      console.log(`Записали новий контакт ${name}!`);
+      console.table(await contacts.listContacts());
+      break;
 
-const server = http.createServer(requestHandler);
+    case "remove":
+      await contacts.removeContact(id);
+      console.log(`Удалили контакт с id: ${id}`);
+      console.table(await contacts.listContacts());
+      break;
+    default:
+      console.warn("\x1B[31m Unknown action type!");
+  }
+};
 
-server.listen(PORT, (err) => {
-    if (err) {
-        console.error(err);
-    }
-    console.log(`Server works at posrt ${PORT}`);
-});
+invokeAction(argv);
